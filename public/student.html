@@ -1,0 +1,54 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <title>Student Meeting</title>
+<script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@4.14.0"></script>
+<script src="https://download.agora.io/sdk/release/AgoraRTC_N.js"></script>
+<script src="common.js"></script>
+
+
+    <style>
+      body {
+        font-family: sans-serif;
+        text-align: center;
+      }
+      #video-container {
+        display: flex;
+        flex-wrap: wrap;
+        justify-content: center;
+        margin-top: 20px;
+      }
+      #emotionLabel {
+        font-weight: bold;
+        font-size: 18px;
+        margin-top: 10px;
+      }
+      #studentVideo {
+        margin-top: 20px;
+        border-radius: 10px;
+        box-shadow: 0 0 10px rgba(0, 0, 0, 0.2);
+      }
+    </style>
+  </head>
+  <body>
+    <h2>Student Portal</h2>
+
+    <input id="channel" placeholder="Enter channel name" />
+    <button onclick="joinMeeting(document.getElementById('channel').value)">
+      Join Meeting
+    </button>
+
+    <div id="video-container"></div>
+
+    <hr />
+    <h3>Emotion Detection</h3>
+    <video
+      id="studentVideo"
+      width="300"
+      height="220"
+      autoplay
+      muted
+    ></video>
+    <p id="emotionLabel">Emotion: Loading...</p>
+  </body>
+</html>
