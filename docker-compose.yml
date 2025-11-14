@@ -1,0 +1,69 @@
+version: "3.8"
+
+services:
+  # Node.js Backend
+  backend-node:
+    build: ./backend-node
+    container_name: engagement-backend
+    ports:
+      - "3000:3000"
+    environment:
+      - NODE_ENV=production
+      - PORT=3000
+      - ML_SERVICE_URL=http://backend-ml:8000
+      - AGORA_APP_ID=${AGORA_APP_ID}
+      - AGORA_APP_CERTIFICATE=${AGORA_APP_CERTIFICATE}
+      - FRONTEND_URL=${FRONTEND_URL:-http://localhost}
+    depends_on:
+      - backend-ml
+    networks:
+      - engagement-network
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:3000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # Python ML Service
+  backend-ml:
+    build: ./backend-ml
+    container_name: engagement-ml
+    ports:
+      - "8000:8000"
+    volumes:
+      - ./backend-ml/models:/app/models
+    environment:
+      - PORT=8000
+      - HOST=0.0.0.0
+      - MODEL_PATH=/app/models/emotion_model_traced.pt
+    networks:
+      - engagement-network
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # React Frontend (Development only - use static hosting for production)
+  frontend-react:
+    build:
+      context: ./frontend-react
+      dockerfile: Dockerfile
+      args:
+        - VITE_API_URL=${VITE_API_URL:-http://localhost:3000}
+        - VITE_SOCKET_URL=${VITE_SOCKET_URL:-http://localhost:3000}
+        - VITE_AGORA_APP_ID=${AGORA_APP_ID}
+    container_name: engagement-frontend
+    ports:
+      - "80:80"
+    depends_on:
+      - backend-node
+    networks:
+      - engagement-network
+    restart: unless-stopped
+
+networks:
+  engagement-network:
+    driver: bridge

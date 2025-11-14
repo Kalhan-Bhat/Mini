@@ -1,0 +1,57 @@
+# Environment files
+.env
+**/.env
+*.env.local
+.env.production
+
+# Node modules
+node_modules/
+**/node_modules/
+
+# Build outputs
+dist/
+build/
+**/dist/
+**/build/
+
+# Python
+__pycache__/
+**/__pycache__/
+*.py[cod]
+*~
+.Python
+venv/
+env/
+*.egg-info/
+
+# Logs
+logs/
+*.log
+npm-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Testing
+coverage/
+.nyc_output/
+
+# Deployment
+.vercel
+.netlify
+
+# Models (optional - uncomment if models are large)
+# backend-ml/models/*.pt
+
+# Generated reports
+**/engagement-report-*.pdf
+**/engagement-report-*.txt

@@ -1,22 +1,28 @@
 {
   "name": "student-engagement-portal",
-  "version": "1.0.0",
-  "main": "index.js",
+  "version": "2.0.0",
+  "description": "Real-time video-based virtual classroom with AI-powered emotion detection",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1",
-    "start": "node server.js"
+    "setup": "npm run setup:backend && npm run setup:frontend",
+    "setup:backend": "cd backend-node && npm install",
+    "setup:frontend": "cd frontend-react && npm install",
+    "dev:backend": "cd backend-node && npm start",
+    "dev:frontend": "cd frontend-react && npm run dev",
+    "docker:build": "docker-compose build",
+    "docker:up": "docker-compose up",
+    "docker:down": "docker-compose down",
+    "docker:logs": "docker-compose logs -f"
   },
-  "keywords": [],
+  "keywords": [
+    "education",
+    "emotion-detection",
+    "video-call",
+    "react",
+    "nodejs",
+    "fastapi",
+    "pytorch",
+    "agora"
+  ],
   "author": "",
-  "license": "ISC",
-  "description": "",
-  "dependencies": {
-    "@100mslive/hms-video-store": "^0.12.39",
-    "agora-access-token": "^2.0.4",
-    "cors": "^2.8.5",
-    "express": "^5.1.0",
-    "socket.io": "^4.8.1",
-    "ws": "^8.18.3"
-  },
-  "type": "commonjs"
+  "license": "MIT"
 }

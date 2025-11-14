@@ -1,0 +1,148 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Frame Capture Test</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            padding: 20px;
+            max-width: 800px;
+            margin: 0 auto;
+        }
+        video {
+            width: 320px;
+            height: 240px;
+            border: 2px solid #4CAF50;
+        }
+        canvas {
+            width: 224px;
+            height: 224px;
+            border: 2px solid #2196F3;
+        }
+        .controls {
+            margin: 20px 0;
+        }
+        button {
+            padding: 10px 20px;
+            margin: 5px;
+            font-size: 16px;
+            cursor: pointer;
+        }
+        #log {
+            background: #f5f5f5;
+            padding: 10px;
+            border: 1px solid #ddd;
+            height: 300px;
+            overflow-y: auto;
+            font-family: monospace;
+            font-size: 12px;
+        }
+        .log-entry {
+            margin: 2px 0;
+        }
+    </style>
+</head>
+<body>
+    <h1>Frame Capture Test</h1>
+    <p>This page tests if video frame capture is working correctly.</p>
+
+    <div class="controls">
+        <button onclick="startCamera()">Start Camera</button>
+        <button onclick="captureFrame()">Capture Frame</button>
+        <button onclick="clearLog()">Clear Log</button>
+    </div>
+
+    <div style="display: flex; gap: 20px;">
+        <div>
+            <h3>Original Video</h3>
+            <video id="video" autoplay muted></video>
+        </div>
+        <div>
+            <h3>Captured Frame</h3>
+            <canvas id="canvas"></canvas>
+        </div>
+    </div>
+
+    <h3>Log Output</h3>
+    <div id="log"></div>
+
+    <script>
+        const video = document.getElementById('video');
+        const canvas = document.getElementById('canvas');
+        const ctx = canvas.getContext('2d');
+        const logDiv = document.getElementById('log');
+
+        canvas.width = 224;
+        canvas.height = 224;
+
+        function log(message, type = 'info') {
+            const entry = document.createElement('div');
+            entry.className = 'log-entry';
+            const timestamp = new Date().toLocaleTimeString();
+            entry.textContent = `[${timestamp}] ${message}`;
+            
+            if (type === 'success') entry.style.color = 'green';
+            if (type === 'error') entry.style.color = 'red';
+            if (type === 'warning') entry.style.color = 'orange';
+            
+            logDiv.appendChild(entry);
+            logDiv.scrollTop = logDiv.scrollHeight;
+        }
+
+        async function startCamera() {
+            try {
+                log('📹 Requesting camera access...', 'info');
+                const stream = await navigator.mediaDevices.getUserMedia({ 
+                    video: true,
+                    audio: false 
+                });
+                
+                video.srcObject = stream;
+                log('✅ Camera started successfully!', 'success');
+                log(`Video dimensions: ${video.videoWidth}x${video.videoHeight}`, 'info');
+                
+                // Wait for video to be ready
+                video.onloadedmetadata = () => {
+                    log(`✅ Video metadata loaded. ReadyState: ${video.readyState}`, 'success');
+                };
+            } catch (err) {
+                log(`❌ Error starting camera: ${err.message}`, 'error');
+            }
+        }
+
+        function captureFrame() {
+            try {
+                if (video.readyState < 2) {
+                    log(`⚠️ Video not ready. ReadyState: ${video.readyState}`, 'warning');
+                    return;
+                }
+
+                log('📸 Capturing frame...', 'info');
+                
+                // Draw video frame to canvas
+                ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+                
+                // Convert to base64
+                const dataUrl = canvas.toDataURL('image/jpeg', 0.8);
+                const sizeKB = Math.round(dataUrl.length / 1024);
+                
+                log(`✅ Frame captured! Size: ${sizeKB} KB`, 'success');
+                log(`Base64 preview: ${dataUrl.substring(0, 100)}...`, 'info');
+                
+            } catch (err) {
+                log(`❌ Error capturing frame: ${err.message}`, 'error');
+            }
+        }
+
+        function clearLog() {
+            logDiv.innerHTML = '';
+            log('Log cleared', 'info');
+        }
+
+        // Auto-start camera
+        window.onload = () => {
+            log('🚀 Page loaded. Click "Start Camera" to begin.', 'info');
+        };
+    </script>
+</body>
+</html>
