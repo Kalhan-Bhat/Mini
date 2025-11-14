@@ -32,45 +32,6 @@ function StudentPage() {
   // Refs
   const frameIntervalRef = useRef(null)
   const canvasRef = useRef(null)
-  const engagementBufferRef = useRef([]) // Rolling 3-second window for smoothing
-
-  /**
-   * Add engagement to rolling buffer for smoothing
-   */
-  const addEngagementToBuffer = (engagement) => {
-    engagementBufferRef.current.push(engagement)
-    // Keep only last 30 entries (~3 seconds)
-    if (engagementBufferRef.current.length > 30) {
-      engagementBufferRef.current.shift()
-    }
-  }
-
-  /**
-   * Get smoothed engagement status using mode (most frequent)
-   */
-  const getSmoothedEngagement = (newEngagement) => {
-    const buffer = engagementBufferRef.current
-    
-    // Need at least 10 entries to start smoothing
-    if (buffer.length < 10) {
-      return newEngagement || "Calculating..."
-    }
-
-    // Count frequency of each engagement state
-    const frequency = {}
-    buffer.forEach(eng => {
-      frequency[eng] = (frequency[eng] || 0) + 1
-    })
-
-    // Return most frequent engagement state
-    const sortedByFreq = Object.entries(frequency).sort((a, b) => b[1] - a[1])
-    const mostFrequent = sortedByFreq[0][0]
-
-    console.log(`📊 Buffer frequencies:`, frequency)
-    console.log(`✅ Smoothed engagement: ${mostFrequent}`)
-
-    return mostFrequent
-  }
 
   /**
    * Handle joining channel
@@ -113,12 +74,8 @@ function StudentPage() {
       })
     }
     
-    // Clear engagement buffer
-    engagementBufferRef.current = []
-    
     await leave()
     setCurrentEmotion(null)
-    setCurrentEngagement(null)
     setConfidence(0)
   }
 
@@ -225,23 +182,10 @@ function StudentPage() {
    */
   useEffect(() => {
     const handleEmotionResult = (data) => {
-      console.log('🎭 Received from backend:', data)
-      
-      // Backend sends: emotion, engagement (calculated), confidence
-      const backendEngagement = data.engagement
-      
-      // Add to rolling buffer for smoothing
-      addEngagementToBuffer(backendEngagement)
-      
-      // Get smoothed engagement
-      const smoothedEngagement = getSmoothedEngagement(backendEngagement)
-      
-      // Update state with emotion and smoothed engagement
+      console.log('🎭 Received emotion:', data)
       setCurrentEmotion(data.emotion)
-      setCurrentEngagement(smoothedEngagement)
+      setCurrentEngagement(data.engagement)
       setConfidence(data.confidence)
-      
-      console.log(`📈 Backend: ${backendEngagement}, Smoothed: ${smoothedEngagement}`)
     }
 
     const handleEmotionError = (data) => {
