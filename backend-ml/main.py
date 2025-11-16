@@ -44,9 +44,9 @@ class Config:
     HOST = os.getenv('HOST', '0.0.0.0')
     MODEL_PATH = os.getenv('MODEL_PATH', './models/emotion_model_traced.pt')
     IMAGE_SIZE = int(os.getenv('IMAGE_SIZE', 224))
-    EMOTION_LABELS = os.getenv(
-        'EMOTION_LABELS',
-        'neutral,happy,sad,angry,surprised,fearful,disgusted'
+    ENGAGEMENT_LABELS = os.getenv(
+        'ENGAGEMENT_LABELS',
+        'Engaged,Bored,Confused,Not Paying Attention'
     ).split(',')
 
 config = Config()
@@ -60,8 +60,8 @@ class PredictionRequest(BaseModel):
     image: str  # Base64 encoded image
 
 class PredictionResponse(BaseModel):
-    """Response model for emotion prediction"""
-    emotion: str
+    """Response model for engagement prediction"""
+    engagement: str
     confidence: float
     all_predictions: Dict[str, float]
 
@@ -75,16 +75,16 @@ class HealthResponse(BaseModel):
 # MODEL LOADER
 # =====================================
 
-class EmotionDetector:
+class EngagementDetector:
     """
-    Emotion Detection Model Wrapper
+    Engagement Detection Model Wrapper
     
-    Handles loading and inference of the PyTorch emotion detection model
+    Handles loading and inference of the PyTorch engagement detection model
     """
     
-    def __init__(self, model_path: str, emotion_labels: list):
+    def __init__(self, model_path: str, engagement_labels: list):
         self.model_path = model_path
-        self.emotion_labels = emotion_labels
+        self.engagement_labels = engagement_labels
         self.device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
         self.model = None
         self.load_model()
@@ -121,7 +121,7 @@ class EmotionDetector:
                 # Return random logits
                 return torch.randn(batch_size, self.num_classes)
         
-        model = PlaceholderModel(len(self.emotion_labels))
+        model = PlaceholderModel(len(self.engagement_labels))
         model.eval()
         return model
     
@@ -173,16 +173,16 @@ class EmotionDetector:
             
             # Get top prediction
             confidence, predicted_idx = torch.max(probabilities, 0)
-            predicted_emotion = self.emotion_labels[predicted_idx.item()]
+            predicted_engagement = self.engagement_labels[predicted_idx.item()]
             
             # Create dict of all predictions
             all_predictions = {
                 label: float(prob)
-                for label, prob in zip(self.emotion_labels, probabilities.cpu().numpy())
+                for label, prob in zip(self.engagement_labels, probabilities.cpu().numpy())
             }
             
             return {
-                'emotion': predicted_emotion,
+                'engagement': predicted_engagement,
                 'confidence': float(confidence.item()),
                 'all_predictions': all_predictions
             }
@@ -192,9 +192,9 @@ class EmotionDetector:
 # =====================================
 
 app = FastAPI(
-    title="Emotion Detection ML Service",
-    description="PyTorch-based emotion detection microservice",
-    version="1.0.0"
+    title="Engagement Detection ML Service",
+    description="PyTorch-based student engagement detection microservice",
+    version="2.0.0"
 )
 
 # Configure CORS
@@ -206,8 +206,8 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# Initialize emotion detector
-detector = EmotionDetector(config.MODEL_PATH, config.EMOTION_LABELS)
+# Initialize engagement detector
+detector = EngagementDetector(config.MODEL_PATH, config.ENGAGEMENT_LABELS)
 
 # =====================================
 # API ENDPOINTS
@@ -232,15 +232,15 @@ async def health_check():
     }
 
 @app.post("/predict", response_model=PredictionResponse)
-async def predict_emotion(request: PredictionRequest):
+async def predict_engagement(request: PredictionRequest):
     """
-    Predict emotion from base64-encoded image
+    Predict engagement state from base64-encoded image
     
     Args:
         request: PredictionRequest with base64 image
         
     Returns:
-        PredictionResponse with emotion, confidence, and all predictions
+        PredictionResponse with engagement state, confidence, and all predictions
     """
     try:
         # Decode base64 image
@@ -258,7 +258,7 @@ async def predict_emotion(request: PredictionRequest):
         # Run prediction
         result = detector.predict(image)
         
-        logger.info(f"✅ Prediction: {result['emotion']} ({result['confidence']:.2%})")
+        logger.info(f"✅ Prediction: {result['engagement']} ({result['confidence']:.2%})")
         
         return PredictionResponse(**result)
         
@@ -266,12 +266,12 @@ async def predict_emotion(request: PredictionRequest):
         logger.error(f"❌ Error during prediction: {e}")
         raise HTTPException(status_code=500, detail=f"Prediction failed: {str(e)}")
 
-@app.get("/emotions")
-async def get_emotion_labels():
-    """Get list of supported emotion labels"""
+@app.get("/engagement-states")
+async def get_engagement_labels():
+    """Get list of supported engagement states"""
     return {
-        "emotions": config.EMOTION_LABELS,
-        "count": len(config.EMOTION_LABELS)
+        "states": config.ENGAGEMENT_LABELS,
+        "count": len(config.ENGAGEMENT_LABELS)
     }
 
 # =====================================
@@ -283,10 +283,10 @@ async def startup_event():
     """Run on application startup"""
     logger.info("")
     logger.info("🚀 ========================================")
-    logger.info("🚀 Emotion Detection ML Service")
+    logger.info("🚀 Engagement Detection ML Service")
     logger.info("🚀 ========================================")
     logger.info(f"🤖 Model: {config.MODEL_PATH}")
-    logger.info(f"📊 Emotions: {', '.join(config.EMOTION_LABELS)}")
+    logger.info(f"📊 Engagement States: {', '.join(config.ENGAGEMENT_LABELS)}")
     logger.info(f"🖥️  Device: {detector.device}")
     logger.info(f"🌐 Server: http://{config.HOST}:{config.PORT}")
     logger.info("🚀 ========================================")
