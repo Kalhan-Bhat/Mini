@@ -162,29 +162,36 @@ function Whiteboard({ socket, channelName, isTeacher }) {
     }
   }
 
-  const toggleFullscreen = () => {
+  const toggleFullscreen = async () => {
     const element = whiteboardRef.current
     
     if (!isFullscreen) {
       // Enter fullscreen
-      if (element.requestFullscreen) {
-        element.requestFullscreen()
-      } else if (element.webkitRequestFullscreen) {
-        element.webkitRequestFullscreen()
-      } else if (element.msRequestFullscreen) {
-        element.msRequestFullscreen()
+      try {
+        if (element.requestFullscreen) {
+          await element.requestFullscreen()
+        } else if (element.webkitRequestFullscreen) {
+          await element.webkitRequestFullscreen()
+        } else if (element.msRequestFullscreen) {
+          await element.msRequestFullscreen()
+        }
+      } catch (err) {
+        console.error('❌ Fullscreen error:', err)
+        // Fallback: don't change state if fullscreen fails
       }
-      setIsFullscreen(true)
     } else {
       // Exit fullscreen
-      if (document.exitFullscreen) {
-        document.exitFullscreen()
-      } else if (document.webkitExitFullscreen) {
-        document.webkitExitFullscreen()
-      } else if (document.msExitFullscreen) {
-        document.msExitFullscreen()
+      try {
+        if (document.exitFullscreen) {
+          await document.exitFullscreen()
+        } else if (document.webkitExitFullscreen) {
+          await document.webkitExitFullscreen()
+        } else if (document.msExitFullscreen) {
+          await document.msExitFullscreen()
+        }
+      } catch (err) {
+        console.error('❌ Exit fullscreen error:', err)
       }
-      setIsFullscreen(false)
     }
   }
 
