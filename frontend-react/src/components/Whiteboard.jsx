@@ -8,10 +8,12 @@ import { useRef, useEffect, useState } from 'react'
 function Whiteboard({ socket, channelName, isTeacher }) {
   const canvasRef = useRef(null)
   const containerRef = useRef(null)
+  const whiteboardRef = useRef(null)
   const [isDrawing, setIsDrawing] = useState(false)
   const [color, setColor] = useState('#000000')
   const [brushSize, setBrushSize] = useState(3)
   const [tool, setTool] = useState('pen') // pen, eraser
+  const [isFullscreen, setIsFullscreen] = useState(false)
   
   useEffect(() => {
     const canvas = canvasRef.current
@@ -23,7 +25,8 @@ function Whiteboard({ socket, channelName, isTeacher }) {
     // Set canvas size to be responsive (use container width)
     const resizeCanvas = () => {
       const width = container.offsetWidth
-      const height = Math.min(window.innerHeight * 0.6, 500) // Responsive height
+      // Larger height for scrollable notebook feel - 2000px for full notebook
+      const height = isFullscreen ? Math.max(window.innerHeight - 120, 800) : 2000
       
       // Save current canvas content
       const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height)
@@ -64,7 +67,7 @@ function Whiteboard({ socket, channelName, isTeacher }) {
         socket.off('whiteboard:clear')
       }
     }
-  }, [socket, channelName])
+  }, [socket, channelName, isFullscreen])
 
   const drawLine = (ctx, x0, y0, x1, y1, color, brushSize, tool) => {
     ctx.beginPath()
@@ -159,10 +162,88 @@ function Whiteboard({ socket, channelName, isTeacher }) {
     }
   }
 
+  const toggleFullscreen = () => {
+    const element = whiteboardRef.current
+    
+    if (!isFullscreen) {
+      // Enter fullscreen
+      if (element.requestFullscreen) {
+        element.requestFullscreen()
+      } else if (element.webkitRequestFullscreen) {
+        element.webkitRequestFullscreen()
+      } else if (element.msRequestFullscreen) {
+        element.msRequestFullscreen()
+      }
+      setIsFullscreen(true)
+    } else {
+      // Exit fullscreen
+      if (document.exitFullscreen) {
+        document.exitFullscreen()
+      } else if (document.webkitExitFullscreen) {
+        document.webkitExitFullscreen()
+      } else if (document.msExitFullscreen) {
+        document.msExitFullscreen()
+      }
+      setIsFullscreen(false)
+    }
+  }
+
+  // Listen for fullscreen changes
+  useEffect(() => {
+    const handleFullscreenChange = () => {
+      const isCurrentlyFullscreen = !!(
+        document.fullscreenElement ||
+        document.webkitFullscreenElement ||
+        document.msFullscreenElement
+      )
+      setIsFullscreen(isCurrentlyFullscreen)
+    }
+
+    document.addEventListener('fullscreenchange', handleFullscreenChange)
+    document.addEventListener('webkitfullscreenchange', handleFullscreenChange)
+    document.addEventListener('msfullscreenchange', handleFullscreenChange)
+
+    return () => {
+      document.removeEventListener('fullscreenchange', handleFullscreenChange)
+      document.removeEventListener('webkitfullscreenchange', handleFullscreenChange)
+      document.removeEventListener('msfullscreenchange', handleFullscreenChange)
+    }
+  }, [])
+
   return (
-    <div style={{ background: '#fff', borderRadius: '8px', padding: '1rem', boxShadow: '0 2px 8px rgba(0,0,0,0.1)', width: '100%', overflow: 'hidden' }}>
+    <div 
+      ref={whiteboardRef}
+      style={{ 
+        background: isFullscreen ? '#f9fafb' : '#fff', 
+        borderRadius: isFullscreen ? '0' : '8px', 
+        padding: '1rem', 
+        boxShadow: isFullscreen ? 'none' : '0 2px 8px rgba(0,0,0,0.1)', 
+        width: '100%', 
+        height: isFullscreen ? '100vh' : 'auto',
+        overflow: isFullscreen ? 'hidden' : 'visible',
+        position: isFullscreen ? 'fixed' : 'relative',
+        top: isFullscreen ? '0' : 'auto',
+        left: isFullscreen ? '0' : 'auto',
+        zIndex: isFullscreen ? '9999' : 'auto'
+      }}
+    >
       <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '1rem', flexWrap: 'wrap' }}>
-        <h3 style={{ margin: 0, flex: '1 1 100%', marginBottom: '0.5rem' }}>📝 Whiteboard</h3>
+        <h3 style={{ margin: 0, flex: '1 1 auto', marginBottom: '0.5rem' }}>📝 Whiteboard {isFullscreen && '(Fullscreen Mode)'}</h3>
+        
+        <button
+          onClick={toggleFullscreen}
+          style={{
+            padding: '0.5rem 0.75rem',
+            background: '#6b7280',
+            color: '#fff',
+            border: 'none',
+            borderRadius: '4px',
+            cursor: 'pointer',
+            fontSize: '0.875rem'
+          }}
+        >
+          {isFullscreen ? '🔙 Exit Fullscreen' : '⛶ Fullscreen'}
+        </button>
         
         {isTeacher && (
           <>
@@ -245,8 +326,13 @@ function Whiteboard({ socket, channelName, isTeacher }) {
         ref={containerRef}
         style={{ 
           width: '100%',
+          height: isFullscreen ? 'calc(100vh - 100px)' : '600px',
           overflow: 'auto',
-          WebkitOverflowScrolling: 'touch' // Smooth scrolling on iOS
+          WebkitOverflowScrolling: 'touch', // Smooth scrolling on iOS
+          border: '2px solid #e5e7eb',
+          borderRadius: '4px',
+          background: '#ffffff',
+          position: 'relative'
         }}
       >
         <canvas
@@ -263,14 +349,20 @@ function Whiteboard({ socket, channelName, isTeacher }) {
             display: 'block',
             width: '100%',
             height: 'auto',
-            border: '2px solid #e5e7eb',
-            borderRadius: '4px',
             cursor: isTeacher ? (tool === 'pen' ? 'crosshair' : 'cell') : 'default',
-            touchAction: isTeacher ? 'none' : 'auto', // Enable touch drawing for teacher only
-            maxHeight: '500px'
+            touchAction: 'none', // Prevent scrolling while drawing
+            background: '#ffffff',
+            minHeight: '2000px' // Tall notebook-like canvas
           }}
         />
       </div>
+      
+      {/* Scrollbar hint */}
+      {!isFullscreen && (
+        <p style={{ marginTop: '0.5rem', fontSize: '0.75rem', color: '#6b7280', textAlign: 'center' }}>
+          💡 Scroll down for more space • Click Fullscreen for better view
+        </p>
+      )}
     </div>
   )
 }
