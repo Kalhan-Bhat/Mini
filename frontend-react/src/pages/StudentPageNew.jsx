@@ -1,6 +1,6 @@
 /**
- * Student Page Component - Modern Google Meet Style UI
- * Student view with video call and engagement detection
+ * Student Page Component - Modern UI
+ * Google Meet-style interface with floating panels
  */
 
 import { useState, useEffect, useRef } from 'react'
@@ -10,8 +10,11 @@ import VideoPlayer from '../components/VideoPlayer'
 import EmotionDisplay from '../components/EmotionDisplay'
 import Whiteboard from '../components/Whiteboard'
 import ScreenShare from '../components/ScreenShare'
+import './StudentPageNew.css'
 
 function StudentPageNew() {
+  console.log('🔵 StudentPage Modern UI loaded')
+  
   // Form state
   const [channelName, setChannelName] = useState('')
   const [studentName, setStudentName] = useState('')
@@ -21,15 +24,14 @@ function StudentPageNew() {
   const [confidence, setConfidence] = useState(0)
   
   // UI state
-  const [activePanel, setActivePanel] = useState(null) // 'whiteboard', 'screenshare', null
-  const [panelMinimized, setPanelMinimized] = useState(false)
+  const [activeView, setActiveView] = useState('main') // main, whiteboard, screenshare
   const [showEngagement, setShowEngagement] = useState(true)
   
   // Store remote user names
   const [remoteUserNames, setRemoteUserNames] = useState({})
   
   // Video state
-  const { localTracks, remoteUsers, isJoined, isLoading, error, join, leave, toggleAudio, toggleVideo, currentUid, client } = useAgora()
+  const { localTracks, remoteUsers, isJoined, isLoading, error, join, leave, currentUid, client } = useAgora()
   const { socket, emit, on, off } = useSocket()
   
   // Refs
@@ -50,7 +52,6 @@ function StudentPageNew() {
       const { uid } = await join(channelName, 'student')
       console.log('✅ Joined successfully, UID:', uid)
       
-      // Notify backend that student joined
       emit('student:join', {
         studentId: uid,
         studentName: studentName || `Student ${uid}`,
@@ -111,7 +112,13 @@ function StudentPageNew() {
           videoElement = document.querySelector('[class*="local-video"] video')
         }
         
-        if (!videoElement || videoElement.readyState < 2) {
+        if (!videoElement) {
+          console.warn('⚠️ Video element not found')
+          return
+        }
+
+        if (videoElement.readyState < 2) {
+          console.warn('⚠️ Video not ready yet')
           return
         }
 
@@ -232,303 +239,159 @@ function StudentPageNew() {
     }
   }, [])
 
-  // Not joined - Show join form
+  // Join Form Screen
   if (!isJoined) {
     return (
-      <div className="page-container">
-        <div className="page-header">
-          <h1 className="page-title">
-            <span>👨‍🎓</span> Student Portal
-          </h1>
-        </div>
-        
-        <div style={{ 
-          flex: 1, 
-          display: 'flex', 
-          alignItems: 'center', 
-          justifyContent: 'center',
-          flexDirection: 'column',
-          gap: '2rem',
-          padding: '2rem'
-        }}>
-          <div style={{ 
-            background: '#3c4043', 
-            padding: '2rem', 
-            borderRadius: '12px', 
-            maxWidth: '500px',
-            width: '100%',
-            boxShadow: '0 4px 16px rgba(0, 0, 0, 0.3)'
-          }}>
-            <h2 style={{ color: '#e8eaed', marginBottom: '1.5rem', textAlign: 'center' }}>
-              Join Your Class
-            </h2>
-            
-            <div className="join-form" style={{ flexDirection: 'column', gap: '1rem' }}>
-              <input
-                type="text"
-                className="join-input"
-                placeholder="Your Name"
-                value={studentName}
-                onChange={(e) => setStudentName(e.target.value)}
-                style={{
-                  width: '100%',
-                  background: '#5f6368',
-                  color: '#e8eaed',
-                  border: 'none',
-                  padding: '12px 16px',
-                  borderRadius: '8px',
-                  fontSize: '1rem'
-                }}
-              />
-              <input
-                type="text"
-                className="join-input"
-                placeholder="Channel Name"
-                value={channelName}
-                onChange={(e) => setChannelName(e.target.value)}
-                style={{
-                  width: '100%',
-                  background: '#5f6368',
-                  color: '#e8eaed',
-                  border: 'none',
-                  padding: '12px 16px',
-                  borderRadius: '8px',
-                  fontSize: '1rem'
-                }}
-              />
-              <button
-                className="join-button"
-                onClick={handleJoin}
-                disabled={isLoading}
-                style={{
-                  width: '100%',
-                  background: '#1a73e8',
-                  color: '#fff',
-                  border: 'none',
-                  padding: '12px 16px',
-                  borderRadius: '8px',
-                  fontSize: '1rem',
-                  fontWeight: '600',
-                  cursor: isLoading ? 'not-allowed' : 'pointer',
-                  opacity: isLoading ? 0.6 : 1
-                }}
-              >
-                {isLoading ? 'Joining...' : 'Join Class'}
-              </button>
-            </div>
-
-            {error && (
-              <div style={{ 
-                marginTop: '1rem', 
-                padding: '12px', 
-                background: '#5f2120', 
-                color: '#f28b82',
-                borderRadius: '8px',
-                fontSize: '0.875rem'
-              }}>
-                {error}
-              </div>
-            )}
+      <div className="modern-join-screen">
+        <div className="join-container">
+          <div className="join-header">
+            <h1>👨‍🎓 Student Portal</h1>
+            <p>Join your virtual classroom</p>
           </div>
+          
+          <div className="join-form-modern">
+            <input
+              type="text"
+              className="modern-input"
+              placeholder="Your Name"
+              value={studentName}
+              onChange={(e) => setStudentName(e.target.value)}
+            />
+            <input
+              type="text"
+              className="modern-input"
+              placeholder="Class Name"
+              value={channelName}
+              onChange={(e) => setChannelName(e.target.value)}
+            />
+            <button
+              className="modern-join-button"
+              onClick={handleJoin}
+              disabled={isLoading}
+            >
+              {isLoading ? 'Joining...' : 'Join Class'}
+            </button>
+          </div>
+
+          {error && (
+            <div className="modern-error">
+              {error}
+            </div>
+          )}
         </div>
       </div>
     )
   }
 
-  // Joined - Show video call interface
+  // Main classroom view
   return (
-    <div className="page-container">
+    <div className="modern-classroom">
       {/* Top Bar */}
-      <div className="page-header">
-        <div className="page-title">
-          <span>👨‍🎓</span>
-          <span>{channelName}</span>
-          <span style={{ fontSize: '0.875rem', color: '#9aa0a6', fontWeight: '400' }}>
-            • {Object.keys(remoteUsers).length + 1} participants
+      <div className="modern-top-bar">
+        <div className="class-info">
+          <h2>{channelName}</h2>
+          <span className="participant-count">
+            {Object.keys(remoteUsers).length + 1} participants
           </span>
         </div>
         
-        <button
-          onClick={handleLeave}
-          style={{
-            background: '#ea4335',
-            color: '#fff',
-            border: 'none',
-            padding: '8px 24px',
-            borderRadius: '8px',
-            cursor: 'pointer',
-            fontWeight: '500',
-            fontSize: '0.9rem'
-          }}
-        >
-          Leave
+        <button className="modern-leave-btn" onClick={handleLeave}>
+          Leave Class
         </button>
       </div>
 
-      {/* Main Content */}
-      <div className="main-content">
-        {/* Video Grid */}
-        <div className="video-main-container">
-          <div className="video-section">
-            <div className="video-grid">
-              {/* Local Video */}
-              {localTracks.video && (
-                <VideoPlayer
-                  videoTrack={localTracks.video}
-                  audioTrack={localTracks.audio}
-                  uid={currentUid}
-                  label={`You (${studentName || currentUid})`}
-                  isLocal={true}
-                />
-              )}
+      {/* Main Content Area */}
+      <div className="modern-content">
+        {/* Video Grid - Always visible in background */}
+        <div className="video-grid-modern">
+          {localTracks.video && (
+            <VideoPlayer
+              videoTrack={localTracks.video}
+              audioTrack={localTracks.audio}
+              uid={currentUid}
+              label={`You (${studentName || currentUid})`}
+              isLocal={true}
+            />
+          )}
 
-              {/* Remote Videos */}
-              {Object.keys(remoteUsers).map((uid) => {
-                const displayName = remoteUserNames[uid] || `User ${uid}`;
-                
-                return (
-                  <VideoPlayer
-                    key={uid}
-                    videoTrack={remoteUsers[uid].videoTrack}
-                    audioTrack={remoteUsers[uid].audioTrack}
-                    uid={uid}
-                    label={displayName}
-                    isLocal={false}
-                  />
-                );
-              })}
+          {Object.keys(remoteUsers).map((uid) => {
+            const displayName = remoteUserNames[uid] || `User ${uid}`
+            return (
+              <VideoPlayer
+                key={uid}
+                videoTrack={remoteUsers[uid].videoTrack}
+                audioTrack={remoteUsers[uid].audioTrack}
+                uid={uid}
+                label={displayName}
+                isLocal={false}
+              />
+            )
+          })}
+        </div>
+
+        {/* Floating Panels */}
+        {activeView === 'whiteboard' && (
+          <div className="floating-panel">
+            <div className="panel-header">
+              <h3>📝 Whiteboard</h3>
+              <button className="close-panel" onClick={() => setActiveView('main')}>✕</button>
+            </div>
+            <div className="panel-content">
+              <Whiteboard socket={socket} channelName={channelName} isTeacher={false} />
             </div>
           </div>
-          
-          {/* Engagement Display */}
-          {showEngagement && currentEngagement && (
-            <div className="engagement-card" style={{ margin: '16px 0 0 0' }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'start' }}>
-                <div>
-                  <div className="engagement-title">Your Engagement</div>
-                  <div className="engagement-value">{currentEngagement}</div>
-                  <div className="engagement-confidence">
-                    <span className="confidence-label">Confidence:</span>
-                    <div className="confidence-bar-container">
-                      <div 
-                        className="confidence-bar-fill" 
-                        style={{ width: `${confidence * 100}%` }}
-                      />
-                    </div>
-                    <span className="confidence-label">{(confidence * 100).toFixed(0)}%</span>
-                  </div>
-                </div>
-                <button
-                  onClick={() => setShowEngagement(false)}
-                  className="panel-control-btn"
-                >
-                  ✕
-                </button>
-              </div>
-            </div>
-          )}
-        </div>
-      </div>
+        )}
 
-      {/* Control Bar */}
-      <div className="control-bar">
-        <button 
-          className="control-button"
-          onClick={toggleAudio}
-          title="Toggle Microphone"
-        >
-          🎤
-        </button>
-        <button 
-          className="control-button"
-          onClick={toggleVideo}
-          title="Toggle Camera"
-        >
-          📹
-        </button>
-        <button 
-          className={`control-button ${activePanel === 'whiteboard' ? 'active' : ''}`}
-          onClick={() => setActivePanel(activePanel === 'whiteboard' ? null : 'whiteboard')}
-          title="Whiteboard"
-        >
-          📝
-        </button>
-        <button 
-          className={`control-button ${activePanel === 'screenshare' ? 'active' : ''}`}
-          onClick={() => setActivePanel(activePanel === 'screenshare' ? null : 'screenshare')}
-          title="Screen Share"
-        >
-          🖥️
-        </button>
-        {!showEngagement && (
-          <button 
-            className="control-button"
-            onClick={() => setShowEngagement(true)}
-            title="Show Engagement"
-          >
-            📊
-          </button>
+        {activeView === 'screenshare' && (
+          <div className="floating-panel">
+            <div className="panel-header">
+              <h3>🖥️ Screen Share</h3>
+              <button className="close-panel" onClick={() => setActiveView('main')}>✕</button>
+            </div>
+            <div className="panel-content">
+              <ScreenShare client={client} channelName={channelName} isTeacher={false} />
+            </div>
+          </div>
         )}
       </div>
 
-      {/* Floating Panels */}
-      {activePanel === 'whiteboard' && (
-        <div className={`floating-panel ${panelMinimized ? 'minimized' : ''}`}>
-          <div className="panel-header">
-            <div className="panel-title">
-              <span>📝</span> Whiteboard
-            </div>
-            <div className="panel-controls">
-              <button 
-                className="panel-control-btn"
-                onClick={() => setPanelMinimized(!panelMinimized)}
-                title={panelMinimized ? 'Maximize' : 'Minimize'}
-              >
-                {panelMinimized ? '🗖' : '−'}
-              </button>
-              <button 
-                className="panel-control-btn"
-                onClick={() => setActivePanel(null)}
-                title="Close"
-              >
-                ✕
-              </button>
-            </div>
+      {/* Sidebar - Engagement Display */}
+      {showEngagement && (
+        <div className="modern-sidebar">
+          <div className="sidebar-header">
+            <h3>Your Engagement</h3>
+            <button className="close-sidebar" onClick={() => setShowEngagement(false)}>✕</button>
           </div>
-          <div className={`panel-content ${panelMinimized ? 'minimized' : ''}`}>
-            <Whiteboard socket={socket} channelName={channelName} isTeacher={false} />
-          </div>
+          <EmotionDisplay engagement={currentEngagement} confidence={confidence} />
         </div>
       )}
 
-      {activePanel === 'screenshare' && (
-        <div className={`floating-panel ${panelMinimized ? 'minimized' : ''}`}>
-          <div className="panel-header">
-            <div className="panel-title">
-              <span>🖥️</span> Screen Share
-            </div>
-            <div className="panel-controls">
-              <button 
-                className="panel-control-btn"
-                onClick={() => setPanelMinimized(!panelMinimized)}
-                title={panelMinimized ? 'Maximize' : 'Minimize'}
-              >
-                {panelMinimized ? '🗖' : '−'}
-              </button>
-              <button 
-                className="panel-control-btn"
-                onClick={() => setActivePanel(null)}
-                title="Close"
-              >
-                ✕
-              </button>
-            </div>
-          </div>
-          <div className={`panel-content ${panelMinimized ? 'minimized' : ''}`}>
-            <ScreenShare client={client} channelName={channelName} isTeacher={false} />
-          </div>
-        </div>
-      )}
+      {/* Bottom Control Bar */}
+      <div className="modern-controls">
+        <button 
+          className={`control-btn ${activeView === 'whiteboard' ? 'active' : ''}`}
+          onClick={() => setActiveView(activeView === 'whiteboard' ? 'main' : 'whiteboard')}
+        >
+          <span className="control-icon">📝</span>
+          <span className="control-label">Whiteboard</span>
+        </button>
+
+        <button 
+          className={`control-btn ${activeView === 'screenshare' ? 'active' : ''}`}
+          onClick={() => setActiveView(activeView === 'screenshare' ? 'main' : 'screenshare')}
+        >
+          <span className="control-icon">🖥️</span>
+          <span className="control-label">Screen Share</span>
+        </button>
+
+        <button 
+          className={`control-btn ${showEngagement ? 'active' : ''}`}
+          onClick={() => setShowEngagement(!showEngagement)}
+        >
+          <span className="control-icon">📊</span>
+          <span className="control-label">Engagement</span>
+        </button>
+      </div>
     </div>
   )
 }
