@@ -27,8 +27,10 @@ function Whiteboard({ socket, channelName, isTeacher }) {
     // Set canvas size to be responsive (use container width)
     const resizeCanvas = () => {
       const width = container.offsetWidth
-      // Larger height for scrollable notebook feel - 2000px for full notebook
-      const height = isFullscreen ? Math.max(window.innerHeight - 120, 800) : 2000
+      // Dynamic height: fullscreen uses available viewport, normal uses scrollable 2000px
+      const height = isFullscreen 
+        ? Math.max(window.innerHeight - 140, 600)  // Fit to screen in fullscreen
+        : 2000  // Scrollable notebook height in normal mode
       
       // Save current canvas content
       const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height)
@@ -231,50 +233,96 @@ function Whiteboard({ socket, channelName, isTeacher }) {
     }
   }
 
-  const downloadNotes = () => {
+  const downloadNotes = async () => {
     // Save current page first
     saveCurrentPage()
     
-    // Create a temporary canvas to combine all pages
-    const tempCanvas = document.createElement('canvas')
+    // Get updated pages after saving
     const canvas = canvasRef.current
-    tempCanvas.width = canvas.width
-    tempCanvas.height = canvas.height * pages.length
-    const ctx = tempCanvas.getContext('2d')
+    const updatedPages = [...pages]
+    updatedPages[currentPage] = canvas.toDataURL('image/png')
     
-    // Fill with white background
-    ctx.fillStyle = '#ffffff'
-    ctx.fillRect(0, 0, tempCanvas.width, tempCanvas.height)
+    // Dynamically import jsPDF
+    const { jsPDF } = await import('jspdf')
     
-    // Draw all pages
-    let loadedPages = 0
-    const pagesToLoad = pages.map((pageData, index) => {
-      return new Promise((resolve) => {
-        if (pageData) {
-          const img = new Image()
-          img.onload = () => {
-            ctx.drawImage(img, 0, canvas.height * index)
-            resolve()
-          }
-          img.src = pageData
-        } else if (index === currentPage) {
-          // Current page (not yet saved)
-          ctx.drawImage(canvas, 0, canvas.height * index)
-          resolve()
-        } else {
-          // Blank page
-          resolve()
+    // Create PDF
+    const pdf = new jsPDF({
+      orientation: 'portrait',
+      unit: 'mm',
+      format: 'a4'
+    })
+    
+    const pageWidth = pdf.internal.pageSize.getWidth()
+    const pageHeight = pdf.internal.pageSize.getHeight()
+    const margin = 15
+    const contentWidth = pageWidth - (2 * margin)
+    
+    // Add title page
+    pdf.setFontSize(24)
+    pdf.setTextColor(37, 99, 235) // Blue color
+    pdf.text('Whiteboard Notes', pageWidth / 2, 40, { align: 'center' })
+    
+    pdf.setFontSize(14)
+    pdf.setTextColor(75, 85, 99) // Gray color
+    pdf.text(`Class: ${channelName}`, pageWidth / 2, 55, { align: 'center' })
+    pdf.text(`Date: ${new Date().toLocaleDateString()}`, pageWidth / 2, 65, { align: 'center' })
+    pdf.text(`Time: ${new Date().toLocaleTimeString()}`, pageWidth / 2, 75, { align: 'center' })
+    pdf.text(`Total Pages: ${updatedPages.length}`, pageWidth / 2, 85, { align: 'center' })
+    
+    // Add divider line
+    pdf.setDrawColor(229, 231, 235)
+    pdf.setLineWidth(0.5)
+    pdf.line(margin, 100, pageWidth - margin, 100)
+    
+    // Add pages
+    for (let i = 0; i < updatedPages.length; i++) {
+      const pageData = updatedPages[i]
+      
+      // Add new page for each whiteboard page (except first one which is title page)
+      pdf.addPage()
+      
+      // Page header
+      pdf.setFontSize(12)
+      pdf.setTextColor(107, 114, 128)
+      pdf.text(`Page ${i + 1} of ${updatedPages.length}`, pageWidth / 2, margin, { align: 'center' })
+      
+      if (pageData) {
+        // Calculate dimensions to fit image in page while maintaining aspect ratio
+        const imgAspectRatio = canvas.width / canvas.height
+        const maxContentHeight = pageHeight - (3 * margin)
+        
+        let imgWidth = contentWidth
+        let imgHeight = imgWidth / imgAspectRatio
+        
+        // If height exceeds page, scale down
+        if (imgHeight > maxContentHeight) {
+          imgHeight = maxContentHeight
+          imgWidth = imgHeight * imgAspectRatio
         }
-      })
-    })
+        
+        const xPos = (pageWidth - imgWidth) / 2
+        const yPos = margin + 10
+        
+        // Add image to PDF
+        pdf.addImage(pageData, 'PNG', xPos, yPos, imgWidth, imgHeight, `page-${i}`, 'FAST')
+      } else {
+        // Empty page indicator
+        pdf.setFontSize(14)
+        pdf.setTextColor(156, 163, 175)
+        pdf.text('(Blank Page)', pageWidth / 2, pageHeight / 2, { align: 'center' })
+      }
+      
+      // Page footer
+      pdf.setFontSize(10)
+      pdf.setTextColor(156, 163, 175)
+      pdf.text(`Generated on ${new Date().toLocaleString()}`, pageWidth / 2, pageHeight - 10, { align: 'center' })
+    }
     
-    Promise.all(pagesToLoad).then(() => {
-      // Download the combined image
-      const link = document.createElement('a')
-      link.download = `whiteboard-notes-${channelName}-${Date.now()}.png`
-      link.href = tempCanvas.toDataURL('image/png')
-      link.click()
-    })
+    // Download PDF
+    const fileName = `${channelName}-notes-${new Date().toISOString().split('T')[0]}.pdf`
+    pdf.save(fileName)
+    
+    alert(`✅ Downloaded PDF with ${updatedPages.length} page(s)!`)
   }
 
   const toggleFullscreen = async () => {
@@ -287,12 +335,34 @@ function Whiteboard({ socket, channelName, isTeacher }) {
           await element.requestFullscreen()
         } else if (element.webkitRequestFullscreen) {
           await element.webkitRequestFullscreen()
+        } else if (element.mozRequestFullScreen) {
+          await element.mozRequestFullScreen()
         } else if (element.msRequestFullscreen) {
           await element.msRequestFullscreen()
+        } else {
+          // Fallback for mobile: use CSS-based fullscreen
+          console.log('📱 Using CSS fullscreen fallback for mobile')
+          element.style.position = 'fixed'
+          element.style.top = '0'
+          element.style.left = '0'
+          element.style.width = '100vw'
+          element.style.height = '100vh'
+          element.style.zIndex = '9999'
+          element.style.background = '#f9fafb'
+          setIsFullscreen(true)
+          return
         }
       } catch (err) {
         console.error('❌ Fullscreen error:', err)
-        // Fallback: don't change state if fullscreen fails
+        // Fallback for mobile
+        element.style.position = 'fixed'
+        element.style.top = '0'
+        element.style.left = '0'
+        element.style.width = '100vw'
+        element.style.height = '100vh'
+        element.style.zIndex = '9999'
+        element.style.background = '#f9fafb'
+        setIsFullscreen(true)
       }
     } else {
       // Exit fullscreen
@@ -301,11 +371,32 @@ function Whiteboard({ socket, channelName, isTeacher }) {
           await document.exitFullscreen()
         } else if (document.webkitExitFullscreen) {
           await document.webkitExitFullscreen()
+        } else if (document.mozCancelFullScreen) {
+          await document.mozCancelFullScreen()
         } else if (document.msExitFullscreen) {
           await document.msExitFullscreen()
+        } else {
+          // Fallback: remove CSS fullscreen
+          element.style.position = ''
+          element.style.top = ''
+          element.style.left = ''
+          element.style.width = ''
+          element.style.height = ''
+          element.style.zIndex = ''
+          element.style.background = ''
+          setIsFullscreen(false)
         }
       } catch (err) {
         console.error('❌ Exit fullscreen error:', err)
+        // Fallback: remove CSS fullscreen
+        element.style.position = ''
+        element.style.top = ''
+        element.style.left = ''
+        element.style.width = ''
+        element.style.height = ''
+        element.style.zIndex = ''
+        element.style.background = ''
+        setIsFullscreen(false)
       }
     }
   }
@@ -316,6 +407,7 @@ function Whiteboard({ socket, channelName, isTeacher }) {
       const isCurrentlyFullscreen = !!(
         document.fullscreenElement ||
         document.webkitFullscreenElement ||
+        document.mozFullScreenElement ||
         document.msFullscreenElement
       )
       setIsFullscreen(isCurrentlyFullscreen)
@@ -323,11 +415,13 @@ function Whiteboard({ socket, channelName, isTeacher }) {
 
     document.addEventListener('fullscreenchange', handleFullscreenChange)
     document.addEventListener('webkitfullscreenchange', handleFullscreenChange)
+    document.addEventListener('mozfullscreenchange', handleFullscreenChange)
     document.addEventListener('msfullscreenchange', handleFullscreenChange)
 
     return () => {
       document.removeEventListener('fullscreenchange', handleFullscreenChange)
       document.removeEventListener('webkitfullscreenchange', handleFullscreenChange)
+      document.removeEventListener('mozfullscreenchange', handleFullscreenChange)
       document.removeEventListener('msfullscreenchange', handleFullscreenChange)
     }
   }, [])
@@ -338,15 +432,16 @@ function Whiteboard({ socket, channelName, isTeacher }) {
       style={{ 
         background: isFullscreen ? '#f9fafb' : '#fff', 
         borderRadius: isFullscreen ? '0' : '8px', 
-        padding: '1rem', 
+        padding: isFullscreen ? '0.5rem' : '1rem', 
         boxShadow: isFullscreen ? 'none' : '0 2px 8px rgba(0,0,0,0.1)', 
-        width: '100%', 
+        width: isFullscreen ? '100vw' : '100%', 
         height: isFullscreen ? '100vh' : 'auto',
         overflow: isFullscreen ? 'hidden' : 'visible',
         position: isFullscreen ? 'fixed' : 'relative',
         top: isFullscreen ? '0' : 'auto',
         left: isFullscreen ? '0' : 'auto',
-        zIndex: isFullscreen ? '9999' : 'auto'
+        zIndex: isFullscreen ? '9999' : 'auto',
+        maxWidth: isFullscreen ? '100vw' : 'none'
       }}
     >
       <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '1rem', flexWrap: 'wrap' }}>
@@ -536,13 +631,14 @@ function Whiteboard({ socket, channelName, isTeacher }) {
         ref={containerRef}
         style={{ 
           width: '100%',
-          height: isFullscreen ? 'calc(100vh - 100px)' : '600px',
+          height: isFullscreen ? 'calc(100vh - 140px)' : '600px',
           overflow: 'auto',
           WebkitOverflowScrolling: 'touch', // Smooth scrolling on iOS
-          border: '2px solid #e5e7eb',
+          border: isFullscreen ? '1px solid #d1d5db' : '2px solid #e5e7eb',
           borderRadius: '4px',
           background: '#ffffff',
-          position: 'relative'
+          position: 'relative',
+          touchAction: 'pan-y' // Allow vertical scrolling on touch devices
         }}
       >
         <canvas
@@ -558,11 +654,11 @@ function Whiteboard({ socket, channelName, isTeacher }) {
           style={{
             display: 'block',
             width: '100%',
-            height: 'auto',
+            height: isFullscreen ? '100%' : 'auto',
             cursor: isTeacher ? (tool === 'pen' ? 'crosshair' : 'cell') : 'default',
-            touchAction: 'none', // Prevent scrolling while drawing
+            touchAction: isTeacher ? 'none' : 'pan-y', // Allow scrolling for students, prevent for teacher when drawing
             background: '#ffffff',
-            minHeight: '2000px' // Tall notebook-like canvas
+            minHeight: isFullscreen ? '100%' : '2000px'
           }}
         />
       </div>
