@@ -34,7 +34,24 @@ function VideoPlayer({ videoTrack, audioTrack, uid, label, isLocal = false }) {
 
   return (
     <div className={`video-player ${isLocal ? 'local-video' : ''}`}>
-      <div ref={videoRef} style={{ width: '100%', height: '100%' }} />
+      {videoTrack ? (
+        <div ref={videoRef} style={{ width: '100%', height: '100%' }} />
+      ) : (
+        <div style={{ 
+          width: '100%', 
+          height: '100%', 
+          display: 'flex', 
+          flexDirection: 'column',
+          alignItems: 'center', 
+          justifyContent: 'center',
+          background: '#1f2937',
+          color: '#fff'
+        }}>
+          <div style={{ fontSize: '3rem', marginBottom: '0.5rem' }}>🎤</div>
+          <div style={{ fontSize: '0.875rem', color: '#9ca3af' }}>Audio Only</div>
+          <div style={{ fontSize: '0.75rem', color: '#6b7280', marginTop: '0.25rem' }}>Camera unavailable</div>
+        </div>
+      )}
       <div className="video-label">{label}</div>
     </div>
   )

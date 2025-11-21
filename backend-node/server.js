@@ -669,6 +669,26 @@ io.on('connection', (socket) => {
   });
 
   /**
+   * Whiteboard new page - broadcast to all in channel
+   */
+  socket.on('whiteboard:newPage', (data) => {
+    const { channelName } = data;
+    console.log('📝 New whiteboard page created in channel:', channelName);
+    // Broadcast to everyone in the channel except sender
+    socket.to(`channel:${channelName}`).emit('whiteboard:newPage', data);
+  });
+
+  /**
+   * Whiteboard change page - broadcast to all in channel
+   */
+  socket.on('whiteboard:changePage', (data) => {
+    const { channelName, pageIndex } = data;
+    console.log(`📝 Whiteboard page changed to ${pageIndex} in channel:`, channelName);
+    // Broadcast to everyone in the channel except sender
+    socket.to(`channel:${channelName}`).emit('whiteboard:changePage', data);
+  });
+
+  /**
    * Handle disconnection
    */
   socket.on('disconnect', () => {
